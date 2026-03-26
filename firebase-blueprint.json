@@ -1,0 +1,170 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "phone": { "type": "string" },
+        "role": { "type": "string", "enum": ["client", "shop_owner", "superadmin"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Shop": {
+      "title": "Shop",
+      "description": "Boutique information",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "location": { "type": "string" },
+        "logoUrl": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "ownerName": { "type": "string" },
+        "ownerEmail": { "type": "string", "format": "email" },
+        "ownerPhone": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "ownerId"]
+    },
+    "PointBalance": {
+      "title": "PointBalance",
+      "description": "Points balance for a user in a specific shop",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "shopId": { "type": "string" },
+        "balance": { "type": "integer" },
+        "lastUpdated": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "shopId", "balance"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Points earn or redeem transaction",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "shopId": { "type": "string" },
+        "points": { "type": "integer" },
+        "type": { "type": "string", "enum": ["earn", "redeem"] },
+        "description": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "shopId", "points", "type", "createdAt"]
+    },
+    "Reward": {
+      "title": "Reward",
+      "description": "Available reward in a shop",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "shopId": { "type": "string" },
+        "title": { "type": "string" },
+        "pointsCost": { "type": "integer" },
+        "description": { "type": "string" }
+      },
+      "required": ["shopId", "title", "pointsCost"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "Notification for a user",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string", "enum": ["info", "success", "warning"] },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "message", "type", "createdAt"]
+    },
+    "Campaign": {
+      "title": "Campaign",
+      "description": "Marketing campaign or promotion",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "shopId": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "type": { "type": "string", "enum": ["double_points", "flash_sale", "new_arrival", "event"] },
+        "startDate": { "type": "string", "format": "date-time" },
+        "endDate": { "type": "string", "format": "date-time" },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["shopId", "title", "type", "startDate", "endDate", "isActive"]
+    },
+    "CheckIn": {
+      "title": "CheckIn",
+      "description": "User scan in a shop",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "shopId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userPhone": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["pending", "completed"] },
+        "activeDiscount": { "type": "integer" },
+        "selectedProducts": { "type": "object" }
+      },
+      "required": ["userId", "shopId", "timestamp", "status"]
+    },
+    "Redemption": {
+      "title": "Redemption",
+      "description": "Promotion redemption",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "shopId": { "type": "string" },
+        "promoId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "shopId", "promoId", "createdAt"]
+    }
+  },
+  "firestore": {
+    "users/{uid}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "shops/{shopId}": {
+      "schema": "Shop",
+      "description": "Boutiques"
+    },
+    "shops/{shopId}/rewards/{rewardId}": {
+      "schema": "Reward",
+      "description": "Rewards offered by a shop"
+    },
+    "shops/{shopId}/campaigns/{campaignId}": {
+      "schema": "Campaign",
+      "description": "Marketing campaigns for a shop"
+    },
+    "pointBalances/{balanceId}": {
+      "schema": "PointBalance",
+      "description": "User points per shop (ID is userId_shopId)"
+    },
+    "transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "History of points"
+    },
+    "notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "User notifications"
+    },
+    "checkIns/{checkInId}": {
+      "schema": "CheckIn",
+      "description": "User scans"
+    },
+    "redemptions/{redemptionId}": {
+      "schema": "Redemption",
+      "description": "Promotion redemptions"
+    }
+  }
+}

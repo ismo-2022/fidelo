@@ -1,0 +1,5 @@
+{
+  "name": "Fidelo - Fidélité Digitale",
+  "description": "Système de carte de fidélité digitale avec rappels clients automatisés et tableau de bord administrateur.",
+  "requestFramePermissions": ["camera"]
+}

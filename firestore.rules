@@ -1,0 +1,126 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    // Collection: users
+    // Fields: uid, name, email, phone, role, createdAt
+    //
+    // Collection: shops
+    // Fields: id, name, location, ownerId, createdAt
+    //
+    // Collection: pointBalances
+    // Fields: userId, shopId, balance, lastUpdated
+    //
+    // Collection: transactions
+    // Fields: userId, shopId, points, type, description, createdAt
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin' ||
+          (request.auth.token.email == "sawadogobi2l225@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isShopOwner(shopId) {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/shops/$(shopId)) && 
+        get(/databases/$(database)/documents/shops/$(shopId)).data.ownerEmail == request.auth.token.email;
+    }
+
+    function isAnyShopOwner() {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'shop_owner';
+    }
+
+    // Domain Validators
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'role']) &&
+             data.role in ['client', 'shop_owner', 'superadmin'] &&
+             data.email is string && data.email.size() < 100;
+    }
+
+    function isValidNotification(data) {
+      return data.keys().hasAll(['userId', 'message', 'type', 'createdAt']) &&
+             data.userId is string &&
+             data.message is string && data.message.size() < 500 &&
+             data.type in ['info', 'success', 'warning', 'promo'];
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin() || isAnyShopOwner();
+      allow create: if isAuthenticated() && isValidUser(request.resource.data) && (isOwner(userId) || isAdmin());
+      allow update: if isAuthenticated() && isValidUser(request.resource.data) && (isOwner(userId) || isAdmin());
+    }
+
+    match /promotions/{promoId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && (isAdmin() || isShopOwner(request.resource.data.shopId));
+      allow update: if isAuthenticated() && (isAdmin() || isShopOwner(resource.data.shopId));
+      allow delete: if isAuthenticated() && (isAdmin() || isShopOwner(resource.data.shopId));
+    }
+
+    match /shops/{shopId} {
+      allow read: if true; // Publicly readable for clients to find shops
+      allow create: if isAdmin();
+      allow update: if isAdmin() || isShopOwner(shopId);
+      
+      match /rewards/{rewardId} {
+        allow read: if true;
+        allow write: if isAdmin() || isShopOwner(shopId);
+      }
+
+      match /campaigns/{campaignId} {
+        allow read: if true;
+        allow write: if isAdmin() || isShopOwner(shopId);
+      }
+
+      match /products/{productId} {
+        allow read: if true;
+        allow write: if isAdmin() || isShopOwner(shopId);
+      }
+    }
+
+    match /pointBalances/{balanceId} {
+      // balanceId is userId_shopId
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin() || isShopOwner(resource.data.shopId));
+      allow write: if isAdmin() || (isAuthenticated() && isShopOwner(request.resource.data.shopId));
+    }
+
+    match /transactions/{transactionId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin() || isShopOwner(resource.data.shopId));
+      allow create: if isAuthenticated() && (request.resource.data.userId == request.auth.uid || isAdmin() || isShopOwner(request.resource.data.shopId));
+    }
+
+    match /checkIns/{checkInId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin() || isShopOwner(resource.data.shopId));
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && (isAdmin() || isShopOwner(resource.data.shopId) || isOwner(resource.data.userId));
+      allow delete: if isAuthenticated() && (isAdmin() || isShopOwner(resource.data.shopId) || isOwner(resource.data.userId));
+    }
+
+    match /redemptions/{redemptionId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin() || isShopOwner(resource.data.shopId));
+      allow create: if isAuthenticated() && (request.resource.data.userId == request.auth.uid || isAdmin() || isShopOwner(request.resource.data.shopId));
+      allow update: if isAdmin() || (isAuthenticated() && isShopOwner(resource.data.shopId));
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidNotification(request.resource.data) && (isAdmin() || isShopOwner(request.resource.data.shopId));
+      allow update: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin()) && 
+                    (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']));
+    }
+  }
+}
